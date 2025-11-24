@@ -47,5 +47,4 @@
 	<string name="home_locked">Icon is locked by settings</string>
 	<string name="summary_locked">Prevent icons to be accidentally removed</string>
 	<string name="title_locked">Lock icons</string>
-    <string name="github_url" translatable="false">https://github.com/micha102/LauncherTV</string>
 </resources>
