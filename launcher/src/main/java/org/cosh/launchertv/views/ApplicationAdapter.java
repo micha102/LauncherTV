@@ -15,18 +15,18 @@
  * limitations under the License.
  */
 
-package org.cosinus.launchertv.views;
+package org.cosh.launchertv.views;
 
 import android.content.Context;
-import android.support.annotation.NonNull;
+import androidx.annotation.NonNull;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import org.cosinus.launchertv.AppInfo;
-import org.cosinus.launchertv.R;
+import org.cosh.launchertv.AppInfo;
+import org.cosh.launchertv.R;
 
 public class ApplicationAdapter extends ArrayAdapter<AppInfo> {
 	private final int mResource;

@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.cosinus.launchertv.activities;
+package org.cosh.launchertv.activities;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -28,8 +28,8 @@ import android.preference.Preference;
 import android.preference.PreferenceActivity;
 import android.widget.Toast;
 
-import org.cosinus.launchertv.R;
-import org.cosinus.launchertv.Setup;
+import org.cosh.launchertv.R;
+import org.cosh.launchertv.Setup;
 
 import java.util.Locale;
 
@@ -74,7 +74,7 @@ public class Preferences extends PreferenceActivity {
 			@Override
 			public boolean onPreferenceClick(Preference preference) {
 				try {
-					startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/alescdb/LauncherTV")));
+					startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(getString(R.string.github_url))));
 				} catch (Exception e) {
 					e.printStackTrace();
 					Toast.makeText(getApplicationContext(),

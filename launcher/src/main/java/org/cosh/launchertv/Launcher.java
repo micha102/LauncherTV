@@ -15,15 +15,15 @@
  * limitations under the License.
  */
 
-package org.cosinus.launchertv;
+package org.cosh.launchertv;
 
 import android.os.Build;
 import android.os.Bundle;
-import android.support.v4.app.FragmentActivity;
+import androidx.fragment.app.FragmentActivity;
 import android.view.View;
 import android.view.WindowManager;
 
-import org.cosinus.launchertv.fragments.ApplicationFragment;
+import org.cosh.launchertv.fragments.ApplicationFragment;
 
 public class Launcher extends FragmentActivity {
 

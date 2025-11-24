@@ -15,16 +15,16 @@
  * limitations under the License.
  */
 
-package org.cosinus.launchertv;
+package org.cosh.launchertv;
 
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
 
-import org.cosinus.launchertv.activities.Preferences;
+import org.cosh.launchertv.activities.Preferences;
 
-import static org.cosinus.launchertv.activities.Preferences.PREFERENCE_DEFAULT_TRANSPARENCY;
-import static org.cosinus.launchertv.activities.Preferences.PREFERENCE_TRANSPARENCY;
+import static org.cosh.launchertv.activities.Preferences.PREFERENCE_DEFAULT_TRANSPARENCY;
+import static org.cosh.launchertv.activities.Preferences.PREFERENCE_TRANSPARENCY;
 
 
 public class Setup {

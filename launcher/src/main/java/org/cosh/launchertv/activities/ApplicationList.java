@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.cosinus.launchertv.activities;
+package org.cosh.launchertv.activities;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -25,10 +25,10 @@ import android.view.View;
 import android.widget.AbsListView;
 import android.widget.AdapterView;
 
-import org.cosinus.launchertv.AppInfo;
-import org.cosinus.launchertv.R;
-import org.cosinus.launchertv.Utils;
-import org.cosinus.launchertv.views.ApplicationAdapter;
+import org.cosh.launchertv.AppInfo;
+import org.cosh.launchertv.R;
+import org.cosh.launchertv.Utils;
+import org.cosh.launchertv.views.ApplicationAdapter;
 
 
 public class ApplicationList extends Activity implements AdapterView.OnItemClickListener, View.OnClickListener {
@@ -116,27 +116,24 @@ public class ApplicationList extends Activity implements AdapterView.OnItemClick
 
 	@Override
 	public void onClick(View v) {
-		switch (v.getId()) {
-			case R.id.delete:
-				Intent data = new Intent();
+        int id = v.getId();
+        if (id == R.id.delete) {
+            Intent data = new Intent();
 
-				data.putExtra(DELETE, true);
-				data.putExtra(APPLICATION_NUMBER, mApplication);
+            data.putExtra(DELETE, true);
+            data.putExtra(APPLICATION_NUMBER, mApplication);
 
-				if (getParent() == null)
-					setResult(Activity.RESULT_OK, data);
-				else
-					getParent().setResult(Activity.RESULT_OK, data);
-				finish();
-				break;
-
-			case R.id.cancel:
+            if (getParent() == null)
+                setResult(Activity.RESULT_OK, data);
+            else
+                getParent().setResult(Activity.RESULT_OK, data);
+            finish();
+        } else if (id == R.id.cancel) {
 				if (getParent() == null)
 					setResult(Activity.RESULT_CANCELED);
 				else
 					getParent().setResult(Activity.RESULT_CANCELED);
 				finish();
-				break;
 		}
 	}
 }

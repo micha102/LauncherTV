@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.cosinus.launchertv.fragments;
+package org.cosh.launchertv.fragments;
 
 import android.app.Activity;
 import android.content.BroadcastReceiver;
@@ -29,7 +29,7 @@ import android.os.BatteryManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
-import android.support.v4.app.Fragment;
+import androidx.fragment.app.Fragment;
 import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -40,13 +40,13 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import org.cosinus.launchertv.AppInfo;
-import org.cosinus.launchertv.R;
-import org.cosinus.launchertv.Setup;
-import org.cosinus.launchertv.Utils;
-import org.cosinus.launchertv.activities.ApplicationList;
-import org.cosinus.launchertv.activities.Preferences;
-import org.cosinus.launchertv.views.ApplicationView;
+import org.cosh.launchertv.AppInfo;
+import org.cosh.launchertv.R;
+import org.cosh.launchertv.Setup;
+import org.cosh.launchertv.Utils;
+import org.cosh.launchertv.activities.ApplicationList;
+import org.cosh.launchertv.activities.Preferences;
+import org.cosh.launchertv.views.ApplicationView;
 
 import java.text.DateFormat;
 import java.util.Date;
@@ -235,7 +235,6 @@ public class ApplicationFragment extends Fragment implements View.OnClickListene
 				mApplications[y][x].setNextFocusDownId(downId);
 			}
 		}
-
 		mGridView.setNextFocusLeftId(R.id.settings);
 		mGridView.setNextFocusRightId(mApplications[0][0].getId());
 		mGridView.setNextFocusUpId(R.id.settings);
@@ -315,6 +314,7 @@ public class ApplicationFragment extends Fragment implements View.OnClickListene
 			mBatteryChangedReceiverRegistered = true;
 		}
 		mHandler.postDelayed(mTimerTick, 1000);
+        mContainer.requestFocus();
 	}
 
 	@Override
@@ -353,16 +353,11 @@ public class ApplicationFragment extends Fragment implements View.OnClickListene
 			openApplication((ApplicationView) v);
 			return;
 		}
-
-		switch (v.getId()) {
-			case R.id.application_grid: {
+            int id = v.getId();
+			if (id == R.id.application_grid) {
 				openApplicationList(ApplicationList.VIEW_GRID, 0, false, REQUEST_CODE_APPLICATION_START);
-			}
-			break;
-
-			case R.id.settings:
+			} else if (id == R.id.settings) {
 				startActivityForResult(new Intent(getContext(), Preferences.class), REQUEST_CODE_PREFERENCES);
-				break;
 		}
 
 	}
@@ -404,8 +399,10 @@ public class ApplicationFragment extends Fragment implements View.OnClickListene
 		Intent launchIntent = pm.getLaunchIntentForPackage(packageName);
 		
 		if(launchIntent == null) {
-			launchIntent = pm.getLeanbackLaunchIntentForPackage(packageName);
-		}
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                launchIntent = pm.getLeanbackLaunchIntentForPackage(packageName);
+            }
+        }
 		
 		return launchIntent;			
 	}

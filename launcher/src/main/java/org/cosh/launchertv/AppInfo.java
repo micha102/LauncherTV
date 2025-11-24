@@ -15,13 +15,12 @@
  * limitations under the License.
  */
 
-package org.cosinus.launchertv;
+package org.cosh.launchertv;
 
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.drawable.Drawable;
-import android.support.annotation.NonNull;
 
 
 public class AppInfo {
@@ -50,7 +49,6 @@ public class AppInfo {
 	}
 
 
-	@NonNull
 	public String getName() {
 		if (mName != null)
 			return mName;

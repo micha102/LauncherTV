@@ -1,16 +1,8 @@
-Status
+Fork
 ----------------
 
-  [![Build Status](https://travis-ci.org/alescdb/LauncherTV.svg?branch=master)](https://travis-ci.org/alescdb/LauncherTV)
-  [![Coverage Status](https://coveralls.io/repos/github/alescdb/LauncherTV/badge.svg)](https://coveralls.io/github/alescdb/LauncherTV) 
-
-Google Play
-----------------
-
-[![Get it on Google Play][2]][1]
-
-  [1]: https://play.google.com/store/apps/details?id=org.cosinus.launchertv
-  [2]: https://developer.android.com/images/brand/en_generic_rgb_wo_60.png
+Fork of  Simple TV Launcher by alexcdb. Many thanks!
+Bumped the gradle.
 
 
 Compiling

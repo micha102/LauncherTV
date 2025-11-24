@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.cosinus.launchertv.views;
+package org.cosh.launchertv.views;
 
 import android.content.Context;
 import android.graphics.Color;
@@ -23,7 +23,7 @@ import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.StateListDrawable;
 import android.os.Build;
-import android.support.annotation.DrawableRes;
+import androidx.annotation.DrawableRes;
 import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.util.Log;
@@ -33,8 +33,8 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-import org.cosinus.launchertv.R;
-import org.cosinus.launchertv.Setup;
+import org.cosh.launchertv.R;
+import org.cosh.launchertv.Setup;
 
 import java.util.Locale;
 
