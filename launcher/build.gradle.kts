@@ -17,8 +17,9 @@ android {
         applicationId = "org.cosh.launchertv"
         minSdk = 16
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = customVersionCode
+        resValue("integer", "app_version_code", versionCode.toString())
+        versionName = "$majorVersion.$minorVersion.$versionCode"
     }
 
     buildTypes {
