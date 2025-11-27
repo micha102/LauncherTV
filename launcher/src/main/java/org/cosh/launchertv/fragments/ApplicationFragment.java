@@ -31,6 +31,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import androidx.fragment.app.Fragment;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -203,6 +204,10 @@ public class ApplicationFragment extends Fragment implements View.OnClickListene
 
 		updateApplications();
 		setApplicationOrder();
+        ApplicationView av = (ApplicationView) ((LinearLayout)mContainer.getChildAt(0)).getChildAt(0);
+        av.setFocusable(true);
+        av.setFocusableInTouchMode(true);
+        av.requestFocus();
 	}
 
 	private void setApplicationOrder() {
@@ -314,7 +319,6 @@ public class ApplicationFragment extends Fragment implements View.OnClickListene
 			mBatteryChangedReceiverRegistered = true;
 		}
 		mHandler.postDelayed(mTimerTick, 1000);
-        mContainer.requestFocus();
 	}
 
 	@Override

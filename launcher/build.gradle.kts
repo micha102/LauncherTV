@@ -32,6 +32,13 @@ android {
             )
             signingConfig = signingConfigs.getByName("debug")
         }
+        debug {
+
+            isMinifyEnabled = true
+            isShrinkResources = true
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
