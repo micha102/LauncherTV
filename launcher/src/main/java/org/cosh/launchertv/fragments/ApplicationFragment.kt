@@ -1,446 +1,400 @@
-/*
- * Simple TV Launcher
- * Copyright 2017 Alexandre Del Bigio
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+package org.cosh.launchertv.fragments
 
-package org.cosh.launchertv.fragments;
+import android.app.Activity
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.content.pm.PackageManager
+import android.os.BatteryManager
+import android.os.Build
+import android.os.Bundle
+import android.os.Handler
+import android.view.Gravity
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.TextView
+import android.widget.Toast
+import androidx.fragment.app.Fragment
+import org.cosh.launchertv.AppInfo
+import org.cosh.launchertv.R
+import org.cosh.launchertv.Setup
+import org.cosh.launchertv.Utils
+import org.cosh.launchertv.activities.ApplicationList
+import org.cosh.launchertv.activities.PreferencesActivity
+import org.cosh.launchertv.views.ApplicationView
+import java.text.DateFormat
+import java.util.*
+import android.util.Log
+import org.cosh.launchertv.PreferencesManager
 
-import android.app.Activity;
-import android.content.BroadcastReceiver;
-import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
-import android.content.SharedPreferences;
-import android.content.pm.PackageInfo;
-import android.content.pm.PackageManager;
-import android.os.BatteryManager;
-import android.os.Build;
-import android.os.Bundle;
-import android.os.Handler;
-import androidx.fragment.app.Fragment;
-import android.text.TextUtils;
-import android.util.Log;
-import android.view.Gravity;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.ImageView;
-import android.widget.LinearLayout;
-import android.widget.TextView;
-import android.widget.Toast;
+class ApplicationFragment : Fragment(), View.OnClickListener, View.OnLongClickListener {
 
-import org.cosh.launchertv.AppInfo;
-import org.cosh.launchertv.R;
-import org.cosh.launchertv.Setup;
-import org.cosh.launchertv.Utils;
-import org.cosh.launchertv.activities.ApplicationList;
-import org.cosh.launchertv.activities.Preferences;
-import org.cosh.launchertv.views.ApplicationView;
+    private lateinit var preferencesManager: PreferencesManager
+    private lateinit var mClock: TextView
+    private lateinit var mDate: TextView
 
-import java.text.DateFormat;
-import java.util.Date;
+    private lateinit var mTimeFormat: DateFormat
+    private lateinit var mDateFormat: DateFormat
+    private lateinit var mBatteryLevel: TextView
+    private lateinit var mBatteryIcon: ImageView
+    private lateinit var mContainer: LinearLayout
+    private lateinit var mSettings: View
+    private lateinit var mGridView: View
+    private lateinit var mSetup: Setup
 
-@SuppressWarnings("PointlessBooleanExpression")
-public class ApplicationFragment extends Fragment implements View.OnClickListener, View.OnLongClickListener {
-	public static final String TAG = "ApplicationFragment";
-	private static final String PREFERENCES_NAME = "applications";
-	private static final int REQUEST_CODE_APPLICATION_LIST = 0x1E;
-	private static final int REQUEST_CODE_WALLPAPER = 0x1F;
-	private static final int REQUEST_CODE_APPLICATION_START = 0x20;
-	private static final int REQUEST_CODE_PREFERENCES = 0x21;
+    private val mHandler = Handler()
+    private val mTimerTick: Runnable = Runnable { setClock() }
 
-	private TextView mClock;
-	private TextView mDate;
-	private DateFormat mTimeFormat;
-	private DateFormat mDateFormat;
-	private TextView mBatteryLevel;
-	private ImageView mBatteryIcon;
-	private BroadcastReceiver mBatteryChangedReceiver = new BroadcastReceiver(){
-		@Override
-		public void onReceive(Context context, Intent intent) {
-			final int level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, 0);
-			mBatteryLevel.setText(
-					String.format(getResources().getString(R.string.battery_level_text), level)
-			);
-			final int batteryIconId = intent.getIntExtra(BatteryManager.EXTRA_ICON_SMALL, 0);
-			mBatteryIcon.setImageDrawable(getResources().getDrawable(batteryIconId));
-		}
-	};
-	private boolean mBatteryChangedReceiverRegistered = false;
+    private var mGridX = 3
+    private var mGridY = 2
+    private var mApplications: Array<Array<ApplicationView?>> = arrayOf()
+    private var mBatteryChangedReceiverRegistered = false
 
-	private final Handler mHandler = new Handler();
-	private final Runnable mTimerTick = new Runnable() {
-		@Override
-		public void run() {
-			setClock();
-		}
-	};
+    companion object {
+        const val TAG = "ApplicationFragment"
+        private const val PREFERENCES_NAME = "applications"
+        private const val REQUEST_CODE_APPLICATION_LIST = 0x1E
+        private const val REQUEST_CODE_WALLPAPER = 0x1F
+        private const val REQUEST_CODE_APPLICATION_START = 0x20
+        private const val REQUEST_CODE_PREFERENCES = 0x21
 
-	private int mGridX = 3;
-	private int mGridY = 2;
-	private LinearLayout mContainer;
-	private ApplicationView[][] mApplications = null;
-	private View mSettings;
-	private View mGridView;
-	private Setup mSetup;
+        @JvmStatic
+        fun newInstance(): ApplicationFragment {
+            return ApplicationFragment()
+        }
+    }
 
-
-	public ApplicationFragment() {
-		// Required empty public constructor
-	}
-
-	public static ApplicationFragment newInstance() {
-		return new ApplicationFragment();
-	}
-
-	@Override
-	public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-		View view = inflater.inflate(R.layout.fragment_application, container, false);
-
-		mSetup = new Setup(getContext());
-		mContainer = (LinearLayout) view.findViewById(R.id.container);
-		mSettings = view.findViewById(R.id.settings);
-		mGridView = view.findViewById(R.id.application_grid);
-		mClock = (TextView) view.findViewById(R.id.clock);
-		mDate = (TextView) view.findViewById(R.id.date);
-		final LinearLayout batteryLayout = (LinearLayout) view.findViewById(R.id.battery_layout);
-		mBatteryLevel = (TextView) view.findViewById(R.id.battery_level);
-		mBatteryIcon = (ImageView) view.findViewById(R.id.battery_icon);
-
-		mTimeFormat = android.text.format.DateFormat.getTimeFormat(getActivity());
-		mDateFormat = android.text.format.DateFormat.getLongDateFormat(getActivity());
-
-		if (mSetup.keepScreenOn())
-			mContainer.setKeepScreenOn(true);
-
-		if (mSetup.showDate() == false)
-			mDate.setVisibility(View.GONE);
-
-		if (mSetup.showBattery()) {
-			batteryLayout.setVisibility(View.VISIBLE);
-			getActivity().registerReceiver(this.mBatteryChangedReceiver, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
-			mBatteryChangedReceiverRegistered = true;
-		} else {
-			batteryLayout.setVisibility(View.INVISIBLE);
-			if (mBatteryChangedReceiverRegistered) {
-				getActivity().unregisterReceiver(this.mBatteryChangedReceiver);
-				mBatteryChangedReceiverRegistered = false;
-			}
-		}
-
-		mSettings.setOnClickListener(this);
-		mGridView.setOnClickListener(this);
-
-		createApplications();
-
-		return view;
-	}
-
-	private void createApplications() {
-		mContainer.removeAllViews();
-
-		mGridX = mSetup.getGridX();
-		mGridY = mSetup.getGridY();
-
-		if (mGridX < 2)
-			mGridX = 2;
-		if (mGridY < 1)
-			mGridY = 1;
-
-		int marginX = Utils.getPixelFromDp(getContext(), mSetup.getMarginX());
-		int marginY = Utils.getPixelFromDp(getContext(), mSetup.getMarginY());
-
-		boolean showNames = mSetup.showNames();
-
-		mApplications = new ApplicationView[mGridY][mGridX];
-
-		int position = 0;
-		for (int y = 0; y < mGridY; y++) {
-			LinearLayout ll = new LinearLayout(getContext());
-			ll.setOrientation(LinearLayout.HORIZONTAL);
-			ll.setGravity(Gravity.CENTER_VERTICAL);
-			ll.setFocusable(false);
-			ll.setLayoutParams(new LinearLayout.LayoutParams(
-					LinearLayout.LayoutParams.MATCH_PARENT, 0, 1
-			));
-
-			for (int x = 0; x < mGridX; x++) {
-				ApplicationView av = new ApplicationView(getContext());
-				av.setOnClickListener(this);
-				av.setOnLongClickListener(this);
-				av.setOnMenuOnClickListener(new View.OnClickListener() {
-					@Override
-					public void onClick(View v) {
-						onLongClick(v);
-					}
-				});
-				av.setPosition(position++);
-				av.showName(showNames);
-				if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN_MR1) {
-					av.setId(0x00FFFFFF + position);
-				} else {
-					av.setId(View.generateViewId());
-				}
-				LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1);
-				lp.setMargins(marginX, marginY, marginX, marginY);
-				av.setLayoutParams(lp);
-				ll.addView(av);
-				mApplications[y][x] = av;
-			}
-			mContainer.addView(ll);
-		}
-
-		updateApplications();
-		setApplicationOrder();
-        ApplicationView av = (ApplicationView) ((LinearLayout)mContainer.getChildAt(0)).getChildAt(0);
-        av.setFocusable(true);
-        av.setFocusableInTouchMode(true);
-        av.requestFocus();
-	}
-
-	private void setApplicationOrder() {
-		for (int y = 0; y < mGridY; y++) {
-			for (int x = 0; x < mGridX; x++) {
-				int upId = R.id.application_grid;
-				int downId = R.id.settings;
-				int leftId = R.id.application_grid;
-				int rightId = R.id.settings;
-
-				if (y > 0)
-					upId = mApplications[y - 1][x].getId();
-
-				if (y + 1 < mGridY)
-					downId = mApplications[y + 1][x].getId();
-
-				if (x > 0)
-					leftId = mApplications[y][x - 1].getId();
-				else if (y > 0)
-					leftId = mApplications[y - 1][mGridX - 1].getId();
-
-				if (x + 1 < mGridX)
-					rightId = mApplications[y][x + 1].getId();
-				else if (y + 1 < mGridY)
-					rightId = mApplications[y + 1][0].getId();
-
-				mApplications[y][x].setNextFocusLeftId(leftId);
-				mApplications[y][x].setNextFocusRightId(rightId);
-				mApplications[y][x].setNextFocusUpId(upId);
-				mApplications[y][x].setNextFocusDownId(downId);
-			}
-		}
-		mGridView.setNextFocusLeftId(R.id.settings);
-		mGridView.setNextFocusRightId(mApplications[0][0].getId());
-		mGridView.setNextFocusUpId(R.id.settings);
-		mGridView.setNextFocusDownId(mApplications[0][0].getId());
-
-		mSettings.setNextFocusLeftId(mApplications[mGridY - 1][mGridX - 1].getId());
-		mSettings.setNextFocusRightId(R.id.application_grid);
-		mSettings.setNextFocusUpId(mApplications[mGridY - 1][mGridX - 1].getId());
-		mSettings.setNextFocusDownId(R.id.application_grid);
-	}
-
-
-	private void updateApplications() {
-		PackageManager pm = getActivity().getPackageManager();
-		SharedPreferences prefs = getActivity().getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE);
-
-		for (int y = 0; y < mGridY; y++) {
-			for (int x = 0; x < mGridX; x++) {
-				ApplicationView app = mApplications[y][x];
-				setApplication(pm, app, prefs.getString(app.getPreferenceKey(), null));
-			}
-		}
-	}
-
-
-	private void restartActivity() {
-		if (mBatteryChangedReceiverRegistered) {
-			getActivity().unregisterReceiver(mBatteryChangedReceiver);
-			mBatteryChangedReceiverRegistered = false;
-		}
-		Intent intent = getActivity().getIntent();
-		getActivity().finish();
-		startActivity(intent);
-	}
-
-
-	private void writePreferences(int appNum, String packageName) {
-		SharedPreferences prefs = getActivity().getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE);
-		SharedPreferences.Editor editor = prefs.edit();
-		String key = ApplicationView.getPreferenceKey(appNum);
-
-		if (TextUtils.isEmpty(packageName))
-			editor.remove(key);
-		else
-			editor.putString(key, packageName);
-
-		editor.apply();
-	}
-
-	private void setApplication(PackageManager pm, ApplicationView app, String packageName) {
-		try {
-
-			if (TextUtils.isEmpty(packageName) == false) {
-				PackageInfo pi = pm.getPackageInfo(packageName, 0);
-				if (pi != null) {
-					AppInfo appInfo = new AppInfo(pm, pi.applicationInfo);
-					app.setImageDrawable(appInfo.getIcon())
-							.setText(appInfo.getName())
-							.setPackageName(appInfo.getPackageName());
-				}
-			} else {
-				app.setImageResource(R.drawable.ic_add)
-						.setText("")
-						.setPackageName(null);
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
-
-	@Override
-	public void onStart() {
-		super.onStart();
-		setClock();
-		if (mSetup.showBattery() && !mBatteryChangedReceiverRegistered) {
-			getActivity().registerReceiver(this.mBatteryChangedReceiver, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
-			mBatteryChangedReceiverRegistered = true;
-		}
-		mHandler.postDelayed(mTimerTick, 1000);
-	}
-
-	@Override
-	public void onPause() {
-		super.onPause();
-		mHandler.removeCallbacks(mTimerTick);
-		if (mBatteryChangedReceiverRegistered) {
-			getActivity().unregisterReceiver(this.mBatteryChangedReceiver);
-		}
-	}
-
-	private void setClock() {
-		Date date = new Date(System.currentTimeMillis());
-		mClock.setText(mTimeFormat.format(date));
-		mDate.setText(mDateFormat.format(date));
-		mHandler.postDelayed(mTimerTick, 1000);
-	}
-
-	@Override
-	public boolean onLongClick(View v) {
-		if (v instanceof ApplicationView) {
-			ApplicationView appView = (ApplicationView) v;
-			if (appView.hasPackage() && mSetup.iconsLocked()) {
-				Toast.makeText(getActivity(), R.string.home_locked, Toast.LENGTH_SHORT).show();
-			} else {
-				openApplicationList(ApplicationList.VIEW_LIST, appView.getPosition(), appView.hasPackage(), REQUEST_CODE_APPLICATION_LIST);
-			}
-			return (true);
-		}
-		return (false);
-	}
-
-	@Override
-	public void onClick(View v) {
-		if (v instanceof ApplicationView) {
-			openApplication((ApplicationView) v);
-			return;
-		}
-            int id = v.getId();
-			if (id == R.id.application_grid) {
-				openApplicationList(ApplicationList.VIEW_GRID, 0, false, REQUEST_CODE_APPLICATION_START);
-			} else if (id == R.id.settings) {
-				startActivityForResult(new Intent(getContext(), Preferences.class), REQUEST_CODE_PREFERENCES);
-		}
-
-	}
-
-	private void openApplication(ApplicationView v) {
-		if (v.hasPackage() == false) {
-			openApplicationList(ApplicationList.VIEW_LIST, v.getPosition(), false, REQUEST_CODE_APPLICATION_LIST);
-			return;
-		}
-
-		try {
-			Toast.makeText(getActivity(), v.getName(), Toast.LENGTH_SHORT).show();
-			startActivity(getLaunchIntentForPackage(v.getPackageName()));
-		} catch (Exception e) {
-			Toast.makeText(getActivity(), v.getName() + " : " + e.getMessage(), Toast.LENGTH_LONG).show();
-		}
-	}
-
-	private void openApplication(String packageName) {
-		try {
-			Intent startApp = getLaunchIntentForPackage(packageName);
-			Toast.makeText(getActivity(), packageName, Toast.LENGTH_SHORT).show();
-			startActivity(startApp);
-		} catch (Exception e) {
-			Toast.makeText(getActivity(), packageName + " : " + e.getMessage(), Toast.LENGTH_LONG).show();
-		}
-	}
-
-	private void openApplicationList(int viewType, int appNum, boolean showDelete, int requestCode) {
-		Intent intent = new Intent(getActivity(), ApplicationList.class);
-		intent.putExtra(ApplicationList.APPLICATION_NUMBER, appNum);
-		intent.putExtra(ApplicationList.VIEW_TYPE, viewType);
-		intent.putExtra(ApplicationList.SHOW_DELETE, showDelete);
-		startActivityForResult(intent, requestCode);
-	}
-	
-	private Intent getLaunchIntentForPackage(String packageName) {
-		PackageManager pm = getActivity().getPackageManager();
-		Intent launchIntent = pm.getLaunchIntentForPackage(packageName);
-		
-		if(launchIntent == null) {
+    private val mBatteryChangedReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, 0)
+            mBatteryLevel.text = getString(R.string.battery_level_text, level)
+            val batteryIconId = intent.getIntExtra(BatteryManager.EXTRA_ICON_SMALL, 0)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                launchIntent = pm.getLeanbackLaunchIntentForPackage(packageName);
+                mBatteryIcon.setImageDrawable(resources.getDrawable(batteryIconId, null))
+            } else {
+                mBatteryIcon.setImageDrawable(resources.getDrawable(batteryIconId))
             }
         }
-		
-		return launchIntent;			
-	}
+    }
 
-	@Override
-	public void onActivityResult(int requestCode, int resultCode, Intent intent) {
-		super.onActivityResult(requestCode, resultCode, intent);
-		switch (requestCode) {
-			case REQUEST_CODE_WALLPAPER:
-				break;
-			case REQUEST_CODE_PREFERENCES:
-				restartActivity();
-				break;
-			case REQUEST_CODE_APPLICATION_START:
-				if (intent != null)
-					openApplication(intent.getExtras().getString(ApplicationList.PACKAGE_NAME));
-				break;
-			case REQUEST_CODE_APPLICATION_LIST:
-				if (resultCode == Activity.RESULT_OK) {
-					Bundle extra = intent.getExtras();
-					int appNum = intent.getExtras().getInt(ApplicationList.APPLICATION_NUMBER);
+    override fun onCreateView(
+        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
+    ): View? {
+        val view = inflater.inflate(R.layout.fragment_application, container, false)
+        preferencesManager = PreferencesManager(requireContext())
+        mSetup = Setup(requireContext())
+        mContainer = view.findViewById(R.id.container)
+        mSettings = view.findViewById(R.id.settings)
+        mGridView = view.findViewById(R.id.application_grid)
+        mClock = view.findViewById(R.id.clock)
+        mDate = view.findViewById(R.id.date)
+        val batteryLayout = view.findViewById<LinearLayout>(R.id.battery_layout)
+        mBatteryLevel = view.findViewById(R.id.battery_level)
+        mBatteryIcon = view.findViewById(R.id.battery_icon)
 
-					if (extra.containsKey(ApplicationList.DELETE) && extra.getBoolean(ApplicationList.DELETE)) {
-						writePreferences(appNum, null);
-					} else {
-						writePreferences(appNum,
-								intent.getExtras().getString(ApplicationList.PACKAGE_NAME)
-						);
-					}
-					updateApplications();
-				}
-				break;
-		}
-	}
+        mTimeFormat = android.text.format.DateFormat.getTimeFormat(activity)
+        mDateFormat = android.text.format.DateFormat.getLongDateFormat(activity)
 
+        if (mSetup.keepScreenOn()) mContainer.keepScreenOn = true
+        if (!mSetup.showDate()) mDate.visibility = View.GONE
+
+        if (mSetup.showBattery()) {
+            batteryLayout.visibility = View.VISIBLE
+            activity?.registerReceiver(mBatteryChangedReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+            mBatteryChangedReceiverRegistered = true
+        } else {
+            batteryLayout.visibility = View.INVISIBLE
+            if (mBatteryChangedReceiverRegistered) {
+                activity?.unregisterReceiver(mBatteryChangedReceiver)
+                mBatteryChangedReceiverRegistered = false
+            }
+        }
+
+        mSettings.setOnClickListener(this)
+        mGridView.setOnClickListener(this)
+
+        createApplications()
+
+        return view
+    }
+
+    private fun createApplications() {
+        mContainer.removeAllViews()
+
+        mGridX = mSetup.getGridX().coerceAtLeast(2)
+        mGridY = mSetup.getGridY().coerceAtLeast(1)
+
+        val marginX = Utils.getPixelFromDp(requireContext(), mSetup.getMarginX())
+        val marginY = Utils.getPixelFromDp(requireContext(), mSetup.getMarginY())
+        val showNames = mSetup.showNames()
+
+        mApplications = Array(mGridY) { arrayOfNulls<ApplicationView>(mGridX) }
+
+        var position = 0
+        for (y in 0 until mGridY) {
+            val ll = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                isFocusable = false
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f
+                )
+            }
+
+            for (x in 0 until mGridX) {
+                val av = ApplicationView(requireContext()).apply {
+                    setOnClickListener(this@ApplicationFragment)
+                    setOnLongClickListener(this@ApplicationFragment)
+                    setOnMenuOnClickListener { onLongClick(it) }
+                    this.position = position++
+                    showName(showNames)
+                    id = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN_MR1) {
+                        0x00FFFFFF + position
+                    } else {
+                        View.generateViewId()
+                    }
+                    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f).apply {
+                        setMargins(marginX, marginY, marginX, marginY)
+                    }
+                }
+                ll.addView(av)
+                mApplications[y][x] = av
+            }
+            mContainer.addView(ll)
+        }
+
+        updateApplications()
+        setApplicationOrder()
+
+        val firstAppView = (mContainer.getChildAt(0) as LinearLayout).getChildAt(0) as ApplicationView
+        firstAppView.apply {
+            isFocusable = true
+            isFocusableInTouchMode = true
+            requestFocus()
+        }
+    }
+
+    private fun setApplicationOrder() {
+        for (y in 0 until mGridY) {
+            for (x in 0 until mGridX) {
+                val upId = if (y > 0) mApplications[y - 1][x]?.id ?: R.id.application_grid else R.id.application_grid
+                val downId = if (y + 1 < mGridY) mApplications[y + 1][x]?.id ?: R.id.settings else R.id.settings
+                val leftId = if (x > 0) mApplications[y][x - 1]?.id ?: R.id.application_grid else R.id.application_grid
+                val rightId = if (x + 1 < mGridX) mApplications[y][x + 1]?.id ?: R.id.settings else R.id.settings
+
+                mApplications[y][x]?.apply {
+                    setNextFocusLeftId(leftId)
+                    setNextFocusRightId(rightId)
+                    setNextFocusUpId(upId)
+                    setNextFocusDownId(downId)
+                }
+            }
+        }
+
+        mGridView.apply {
+            setNextFocusLeftId(R.id.settings)
+            setNextFocusRightId(mApplications[0][0]?.id ?: R.id.settings)
+            setNextFocusUpId(R.id.settings)
+            setNextFocusDownId(mApplications[0][0]?.id ?: R.id.settings)
+        }
+
+        mSettings.apply {
+            setNextFocusLeftId(mApplications[mGridY - 1][mGridX - 1]?.id ?: R.id.application_grid)
+            setNextFocusRightId(R.id.application_grid)
+            setNextFocusUpId(mApplications[mGridY - 1][mGridX - 1]?.id ?: R.id.application_grid)
+            setNextFocusDownId(R.id.application_grid)
+        }
+    }
+
+    private fun updateApplications() {
+        val pm = activity?.packageManager ?: return
+
+        for (y in 0 until mGridY) {
+            for (x in 0 until mGridX) {
+                val app = mApplications[y][x]
+                val key = ApplicationView.getPreferenceKey(app?.position ?: -1)
+                val packageName = preferencesManager.getPackageName(key)
+                setApplication(pm, app, packageName)
+            }
+        }
+    }
+    private fun setApplication(pm: PackageManager, app: ApplicationView?, packageName: String?) {
+
+        try {
+            if (!packageName.isNullOrEmpty()) {
+                // Try to get the PackageInfo object for the given packageName
+
+                val packageInfo = try {
+                    pm.getPackageInfo(packageName, 0)
+                } catch (e: PackageManager.NameNotFoundException) {
+                    Log.e(TAG, "Package not found: $packageName", e)
+                    null
+                }
+
+                // Proceed if the packageInfo is found
+                packageInfo?.let {
+                    val appInfo = AppInfo(pm, it.applicationInfo!!)  // Pass non-null applicationInfo
+
+                    // Update the UI elements
+                    app?.apply {
+                        setImageDrawable(appInfo.getIcon())
+                        setText(appInfo.getName())
+                        this.packageName = appInfo.getPackageName()
+                    }
+                } ?: run {
+                    Log.w(TAG, "PackageInfo is null for package: $packageName")
+                }
+            } else {
+                // Handle the case when the packageName is empty or null
+                app?.apply {
+                    setImageResource(R.drawable.ic_add)
+                    setText("")
+                    this.packageName = null
+                }
+            }
+        } catch (e: Exception) {
+            // Catch and log any unexpected errors
+            Log.e(TAG, "Error setting application", e)
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        setClock()
+        if (mSetup.showBattery() && !mBatteryChangedReceiverRegistered) {
+            activity?.registerReceiver(mBatteryChangedReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+            mBatteryChangedReceiverRegistered = true
+        }
+        mHandler.postDelayed(mTimerTick, 1000)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        mHandler.removeCallbacks(mTimerTick)
+        if (mBatteryChangedReceiverRegistered) {
+            activity?.unregisterReceiver(mBatteryChangedReceiver)
+        }
+    }
+
+    private fun setClock() {
+        val date = Date(System.currentTimeMillis())
+        mClock.text = mTimeFormat.format(date)
+        mDate.text = mDateFormat.format(date)
+        mHandler.postDelayed(mTimerTick, 1000)
+    }
+
+    override fun onLongClick(v: View?): Boolean {
+        if (v is ApplicationView) {
+            val appView = v
+            if (appView.hasPackage() && mSetup.iconsLocked()) {
+                Toast.makeText(activity, R.string.home_locked, Toast.LENGTH_SHORT).show()
+            } else {
+                openApplicationList(ApplicationList.VIEW_LIST, appView.position, appView.hasPackage(), REQUEST_CODE_APPLICATION_LIST)
+            }
+            return true
+        }
+        return false
+    }
+
+    override fun onClick(v: View?) {
+        when (v?.id) {
+            R.id.application_grid -> openApplicationList(ApplicationList.VIEW_GRID, 0, false, REQUEST_CODE_APPLICATION_START)
+            R.id.settings -> startActivityForResult(Intent(context, PreferencesActivity::class.java), REQUEST_CODE_PREFERENCES)
+            else -> {
+                if (v is ApplicationView) {
+                    openApplication(v)
+                }
+            }
+        }
+    }
+
+    private fun openApplication(v: ApplicationView) {
+        if (!v.hasPackage()) {
+            openApplicationList(ApplicationList.VIEW_LIST, v.position, false, REQUEST_CODE_APPLICATION_LIST)
+            return
+        }
+
+        try {
+            Toast.makeText(activity, v.name, Toast.LENGTH_SHORT).show()
+            startActivity(getLaunchIntentForPackage(v.packageName.toString()))
+        } catch (e: Exception) {
+            Toast.makeText(activity, "${v.name} : ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun openApplication(packageName: String) {
+        try {
+            val startApp = getLaunchIntentForPackage(packageName)
+            Toast.makeText(activity, packageName, Toast.LENGTH_SHORT).show()
+            startActivity(startApp)
+        } catch (e: Exception) {
+            Toast.makeText(activity, "$packageName : ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun openApplicationList(viewType: Int, appNum: Int, showDelete: Boolean, requestCode: Int) {
+        val intent = Intent(activity, ApplicationList::class.java).apply {
+            putExtra(ApplicationList.APPLICATION_NUMBER, appNum)
+            putExtra(ApplicationList.VIEW_TYPE, viewType)
+            putExtra(ApplicationList.SHOW_DELETE, showDelete)
+        }
+        startActivityForResult(intent, requestCode)
+    }
+
+    private fun getLaunchIntentForPackage(packageName: String): Intent {
+        val pm = activity?.packageManager ?: return Intent()
+        var launchIntent = pm.getLaunchIntentForPackage(packageName)
+
+        if (launchIntent == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            launchIntent = pm.getLeanbackLaunchIntentForPackage(packageName)
+        }
+
+        return launchIntent ?: Intent()
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, intent: Intent?) {
+        super.onActivityResult(requestCode, resultCode, intent)
+        when (requestCode) {
+            REQUEST_CODE_WALLPAPER -> {}
+            REQUEST_CODE_PREFERENCES -> restartActivity()
+            REQUEST_CODE_APPLICATION_START -> intent?.let {
+                openApplication(it.extras?.getString(ApplicationList.PACKAGE_NAME) ?: "")
+            }
+            REQUEST_CODE_APPLICATION_LIST -> {
+                if (resultCode == Activity.RESULT_OK) {
+                    val appNum = intent?.extras?.getInt(ApplicationList.APPLICATION_NUMBER) ?: return
+                    val delete = intent.extras?.getBoolean(ApplicationList.DELETE) == true
+                    val packageName = intent.extras?.getString(ApplicationList.PACKAGE_NAME)
+
+                    if (delete) {
+                        writePreferences(appNum, null)
+                    } else {
+                        writePreferences(appNum, packageName)
+                    }
+                    updateApplications()
+                }
+            }
+        }
+    }
+
+    private fun restartActivity() {
+        if (mBatteryChangedReceiverRegistered) {
+            requireActivity().unregisterReceiver(mBatteryChangedReceiver)
+            mBatteryChangedReceiverRegistered = false
+        }
+        val intent = requireActivity().getIntent()
+        requireActivity().finish()
+        startActivity(intent)
+    }
+
+    private fun writePreferences(appNum: Int, packageName: String?) {
+        // Use PreferencesManager to handle SharedPreferences logic
+        val key = ApplicationView.getPreferenceKey(appNum)
+        preferencesManager.savePackageName(key, packageName)
+    }
 
 }

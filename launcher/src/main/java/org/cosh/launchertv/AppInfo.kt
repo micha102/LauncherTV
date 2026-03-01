@@ -1,65 +1,65 @@
-/*
- * Simple TV Launcher
- * Copyright 2017 Alexandre Del Bigio
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+package org.cosh.launchertv
 
-package org.cosh.launchertv;
+import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
+import android.content.pm.ResolveInfo
+import android.graphics.drawable.Drawable
+import android.util.Log
+import org.cosh.launchertv.fragments.ApplicationFragment.Companion.TAG
 
-import android.content.pm.ApplicationInfo;
-import android.content.pm.PackageManager;
-import android.content.pm.ResolveInfo;
-import android.graphics.drawable.Drawable;
+class AppInfo(packageManager: PackageManager, resolveInfo: ResolveInfo) {
+    var mIcon: Drawable
+    var mPackageName: String
+    var mName: String
 
+    init {
+        val activityInfo = resolveInfo.activityInfo
 
-public class AppInfo {
-	private final Drawable mIcon;
-	private String mName;
-	private final String mPackageName;
+        // If activityInfo is null, the packageName cannot be accessed safely
+        mPackageName = activityInfo?.packageName ?: "UnknownPackage"
 
-	AppInfo(PackageManager packageManager, ResolveInfo resolveInfo) {
-		mPackageName = resolveInfo.activityInfo.packageName;
-		mIcon = resolveInfo.loadIcon(packageManager);
-		try {
-			mName = resolveInfo.loadLabel(packageManager).toString();
-		} catch (Exception e) {
-			mName = mPackageName;
-		}
-	}
+        mName = try {
+            resolveInfo.loadLabel(packageManager).toString()
+        } catch (e: Exception) {
+            mPackageName
+        }
 
-	public AppInfo(PackageManager packageManager, ApplicationInfo applicationInfo) {
-		mPackageName = applicationInfo.packageName;
-		mIcon = applicationInfo.loadIcon(packageManager);
-		try {
-			mName = applicationInfo.loadLabel(packageManager).toString();
-		} catch (Exception e) {
-			mName = mPackageName;
-		}
-	}
+        // Safely load the icon with null checks
+        mIcon = try {
+            resolveInfo.loadIcon(packageManager)
+        } catch (e: Exception) {
+            // Fallback icon if loading the icon fails
+            packageManager.getDefaultActivityIcon()
+        }
+    }
 
+    // Constructor that accepts ApplicationInfo directly
+    constructor(packageManager: PackageManager, applicationInfo: ApplicationInfo) : this(
+        packageManager,
+        ResolveInfo().apply {
+            activityInfo = android.content.pm.ActivityInfo() // Ensure activityInfo is initialized
+            activityInfo.packageName = applicationInfo.packageName
+        }
+    ) {
+        mPackageName = applicationInfo.packageName
+        mName = try {
+            applicationInfo.loadLabel(packageManager).toString()
+        } catch (e: Exception) {
+            mPackageName
+        }
 
-	public String getName() {
-		if (mName != null)
-			return mName;
-		return ("");
-	}
+        // Safely load the icon with null checks
+        mIcon = try {
+            applicationInfo.loadIcon(packageManager)
+        } catch (e: Exception) {
+            // Fallback icon if loading the icon fails
+            packageManager.getDefaultActivityIcon()
+        }
+    }
 
-	public Drawable getIcon() {
-		return mIcon;
-	}
+    fun getName(): String = mName
 
-	public String getPackageName() {
-		return mPackageName;
-	}
+    fun getIcon(): Drawable = mIcon
+
+    fun getPackageName(): String = mPackageName
 }

@@ -1,76 +1,55 @@
-/*
- * Simple TV Launcher
- * Copyright 2017 Alexandre Del Bigio
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+package org.cosh.launchertv
 
-package org.cosh.launchertv;
+import android.os.Bundle
+import android.os.Build
+import android.view.View
+import android.view.WindowManager
+import androidx.appcompat.app.AppCompatActivity
+import org.cosh.launchertv.fragments.ApplicationFragment
 
-import android.os.Build;
-import android.os.Bundle;
-import androidx.fragment.app.FragmentActivity;
-import android.view.View;
-import android.view.WindowManager;
+class Launcher : AppCompatActivity() {
 
-import org.cosh.launchertv.fragments.ApplicationFragment;
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
 
-public class Launcher extends FragmentActivity {
+        setFullScreen()
+        setContentView(R.layout.activity_launcher)
 
-	@Override
-	protected void onCreate(Bundle savedInstanceState) {
-		super.onCreate(savedInstanceState);
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.container, ApplicationFragment.newInstance(), ApplicationFragment.TAG)
+            .commit()
+    }
 
-		setFullScreen();
-		setContentView(R.layout.activity_launcher);
+    override fun onResume() {
+        super.onResume()
+        setFullScreen()
+    }
 
-		getSupportFragmentManager().beginTransaction()
-				.replace(R.id.container, ApplicationFragment.newInstance(), ApplicationFragment.TAG)
-				.commit();
-	}
+    private fun setFullScreen() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                // For versions above KitKat (API 19), use immersive fullscreen
+                val decorView = window.decorView
+                val uiOptions = (
+                        View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                                or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                                or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                                or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION  // Hide nav bar
+                                or View.SYSTEM_UI_FLAG_FULLSCREEN      // Hide status bar
+                                or View.SYSTEM_UI_FLAG_IMMERSIVE       // Enable immersive mode
+                                or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY // Stick the immersive mode even after interactions
+                        )
 
-	@Override
-	protected void onResume() {
-		super.onResume();
-		setFullScreen();
-	}
-
-	private void setFullScreen() {
-		try {
-			if (Build.VERSION.SDK_INT < 19) {
-				getWindow().setFlags(
-						WindowManager.LayoutParams.FLAG_FULLSCREEN | WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER,
-						WindowManager.LayoutParams.FLAG_FULLSCREEN | WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER
-				);
-			} else {
-				View decorView = getWindow().getDecorView();
-
-				int uiOptions = View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-						| View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-						| View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-						| View.SYSTEM_UI_FLAG_HIDE_NAVIGATION // hide nav bar
-						| View.SYSTEM_UI_FLAG_FULLSCREEN // hide status bar
-						| View.SYSTEM_UI_FLAG_IMMERSIVE;
-
-				decorView.setSystemUiVisibility(uiOptions);
-
-				getWindow().setFlags(
-						WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER,
-						WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER
-				);
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
+                decorView.systemUiVisibility = uiOptions
+            } else {
+                // For older versions, fallback to standard fullscreen
+                window.setFlags(
+                    WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                    WindowManager.LayoutParams.FLAG_FULLSCREEN
+                )
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
 }

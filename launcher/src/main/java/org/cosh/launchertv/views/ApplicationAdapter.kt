@@ -1,61 +1,37 @@
-/*
- * Simple TV Launcher
- * Copyright 2017 Alexandre Del Bigio
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+package org.cosh.launchertv.views
 
-package org.cosh.launchertv.views;
+import android.content.Context
+import android.view.View
+import android.view.ViewGroup
+import android.widget.ArrayAdapter
+import android.widget.ImageView
+import android.widget.TextView
+import org.cosh.launchertv.AppInfo
+import org.cosh.launchertv.R
 
-import android.content.Context;
-import androidx.annotation.NonNull;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
-import android.widget.ImageView;
-import android.widget.TextView;
+class ApplicationAdapter(
+    context: Context,
+    private val mResource: Int,
+    items: Array<AppInfo>
+) : ArrayAdapter<AppInfo>(context, R.layout.list_item, items) {
 
-import org.cosh.launchertv.AppInfo;
-import org.cosh.launchertv.R;
+    override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+        val view = convertView ?: View.inflate(context, mResource, null)
 
-public class ApplicationAdapter extends ArrayAdapter<AppInfo> {
-	private final int mResource;
+        val packageImage: ImageView = view.findViewById(R.id.application_icon)
+        val packageName: TextView = view.findViewById(R.id.application_name)
+        val appInfo = getItem(position)
 
-	public ApplicationAdapter(Context context, int resId, AppInfo[] items) {
-		super(context, R.layout.list_item, items);
-		mResource = resId;
-	}
+        appInfo?.let { info ->
+            view.tag = info // Explicitly setting the tag to `AppInfo` type
+            packageName.text = info.getName()
 
-	@NonNull
-	@Override
-	public View getView(int position, View convertView, @NonNull ViewGroup parent) {
-		View view;
+            // Handling nullable `icon` field in AppInfo class
+            info.getIcon().let { icon ->
+                packageImage.setImageDrawable(icon) // Setting the icon if not null
+            }
+        }
 
-		if (convertView == null) {
-			view = View.inflate(getContext(), mResource, null);
-		} else {
-			view = convertView;
-		}
-		ImageView packageImage = (ImageView) view.findViewById(R.id.application_icon);
-		TextView packageName = (TextView) view.findViewById(R.id.application_name);
-		AppInfo appInfo = getItem(position);
-
-		if (appInfo != null) {
-			view.setTag(appInfo);
-			packageName.setText(appInfo.getName());
-			if (appInfo.getIcon() != null)
-				packageImage.setImageDrawable(appInfo.getIcon());
-		}
-		return (view);
-	}
+        return view
+    }
 }

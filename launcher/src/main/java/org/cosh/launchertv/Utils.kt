@@ -1,74 +1,53 @@
-/*
- * Simple TV Launcher
- * Copyright 2017 Alexandre Del Bigio
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+package org.cosh.launchertv
 
-package org.cosh.launchertv;
+import android.content.Context
+import android.content.Intent
+import android.os.Build
+import android.util.TypedValue
+import java.util.*
 
-import android.content.Context;
-import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.content.pm.ResolveInfo;
-import android.content.res.Resources;
-import android.util.TypedValue;
+object Utils {
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Set;
-import java.util.HashSet;
+    fun loadApplications(context: Context): List<AppInfo> {
+        val packageManager = context.packageManager
+        val mainIntent = Intent(Intent.ACTION_MAIN, null).apply {
+            addCategory(Intent.CATEGORY_LAUNCHER)
+        }
 
-public class Utils {
-    public static List<AppInfo> loadApplications(Context context) {
-        PackageManager packageManager = context.getPackageManager();
+        val intentActivities = packageManager.queryIntentActivities(mainIntent, 0)
 
-        Intent mainIntent = new Intent(Intent.ACTION_MAIN, null);
-        mainIntent.addCategory(Intent.CATEGORY_LAUNCHER);
-        List<ResolveInfo> intentActivities = packageManager.queryIntentActivities(mainIntent, 0);
+        // Only add the CATEGORY_LEANBACK_LAUNCHER if the API level is 21 or higher
+        val leanbackIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            Intent(Intent.ACTION_MAIN, null).apply {
+                addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER)
+            }
+        } else {
+            null
+        }
 
-        mainIntent = new Intent(Intent.ACTION_MAIN, null);
-        mainIntent.addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER);
-        intentActivities.addAll(packageManager.queryIntentActivities(mainIntent, 0));
+        // Merge the activities
+        val allActivities = if (leanbackIntent != null) {
+            intentActivities + packageManager.queryIntentActivities(leanbackIntent, 0)
+        } else {
+            intentActivities
+        }
 
-        Set<String> knownPackages = new HashSet<>();
-        List<AppInfo> entries = new ArrayList<>();
+        val knownPackages = mutableSetOf<String>()
+        val entries = mutableListOf<AppInfo>()
 
-        if (intentActivities != null) {
-            for (ResolveInfo resolveInfo : intentActivities) {
-                if (!context.getPackageName().equals(resolveInfo.activityInfo.packageName) &&
-                        !knownPackages.contains(resolveInfo.activityInfo.packageName)) {
-                    entries.add(new AppInfo(packageManager, resolveInfo));
-                    knownPackages.add(resolveInfo.activityInfo.packageName);
-                }
+        for (resolveInfo in allActivities) {
+            val packageName = resolveInfo.activityInfo.packageName
+            if (context.packageName != packageName && !knownPackages.contains(packageName)) {
+                entries.add(AppInfo(packageManager, resolveInfo))
+                knownPackages.add(packageName)
             }
         }
 
-        Collections.sort(entries, new Comparator<AppInfo>() {
-            @Override
-            public int compare(AppInfo lhs, AppInfo rhs) {
-                return lhs.getName().compareToIgnoreCase(rhs.getName());
-            }
-        });
-        return entries;
+        return entries.sortedBy { it.getName().lowercase(Locale.ROOT) }
     }
 
-
-
-    public static int getPixelFromDp(Context context, int dp) {
-		Resources r = context.getResources();
-		return ((int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp, r.getDisplayMetrics()));
-	}
+    fun getPixelFromDp(context: Context, dp: Int): Int {
+        val displayMetrics = context.resources.displayMetrics
+        return (TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp.toFloat(), displayMetrics)).toInt()
+    }
 }

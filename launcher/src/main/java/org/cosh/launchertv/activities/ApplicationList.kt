@@ -1,139 +1,139 @@
-/*
- * Simple TV Launcher
- * Copyright 2017 Alexandre Del Bigio
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+package org.cosh.launchertv.activities
 
-package org.cosh.launchertv.activities;
+import android.app.Activity
+import android.content.Intent
+import android.os.Bundle
+import android.view.View
+import android.widget.AbsListView
+import android.widget.AdapterView
+import kotlinx.coroutines.*
+import org.cosh.launchertv.AppInfo
+import org.cosh.launchertv.R
+import org.cosh.launchertv.Utils
+import org.cosh.launchertv.views.ApplicationAdapter
 
-import android.app.Activity;
-import android.content.Intent;
-import android.os.AsyncTask;
-import android.os.Bundle;
-import android.view.View;
-import android.widget.AbsListView;
-import android.widget.AdapterView;
+class ApplicationList : Activity(),
+    AdapterView.OnItemClickListener,
+    View.OnClickListener {
 
-import org.cosh.launchertv.AppInfo;
-import org.cosh.launchertv.R;
-import org.cosh.launchertv.Utils;
-import org.cosh.launchertv.views.ApplicationAdapter;
+    companion object {
+        const val PACKAGE_NAME = "package_name"
+        const val APPLICATION_NUMBER = "application"
+        const val VIEW_TYPE = "view_type"
+        const val DELETE = "delete"
+        const val SHOW_DELETE = "show_delete"
 
+        const val VIEW_GRID = 0
+        const val VIEW_LIST = 1
+    }
 
-public class ApplicationList extends Activity implements AdapterView.OnItemClickListener, View.OnClickListener {
-	public static final String PACKAGE_NAME = "package_name";
-	public static final String APPLICATION_NUMBER = "application";
-	public static final String VIEW_TYPE = "view_type";
-	public static final String DELETE = "delete";
-	public static final String SHOW_DELETE = "show_delete";
-	//
-	public static final int VIEW_GRID = 0;
-	public static final int VIEW_LIST = 1;
-	//
-	private int mApplication = -1;
-	private int mViewType = 0;
-	private AbsListView mListView;
-	private final AsyncTask<Void, Void, AppInfo[]> mApplicationLoader = new AsyncTask<Void, Void, AppInfo[]>() {
-		@Override
-		protected AppInfo[] doInBackground(Void... params) {
-			return Utils.loadApplications(ApplicationList.this).toArray(new AppInfo[0]);
-		}
+    private var applicationIndex: Int = -1
+    private var viewType: Int = VIEW_GRID
+    private lateinit var listView: AbsListView
 
-		@Override
-		protected void onPostExecute(AppInfo[] apps) {
-			getListView().setOnItemClickListener(ApplicationList.this);
-			getListView().setAdapter(
-					new ApplicationAdapter(ApplicationList.this,
-							mViewType == VIEW_LIST ? R.layout.list_item : R.layout.grid_item,
-							apps));
-		}
-	};
+    // Coroutine scope for launching background tasks
+    private val coroutineScope = CoroutineScope(Dispatchers.Main)
 
-	@Override
-	protected void onCreate(Bundle savedInstanceState) {
-		super.onCreate(savedInstanceState);
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
 
-		Intent intent = getIntent();
-		Bundle args = intent.getExtras();
+        // Retrieve the view type and application number from the intent extras
+        intent.extras?.let { args ->
+            if (args.containsKey(APPLICATION_NUMBER))
+                applicationIndex = args.getInt(APPLICATION_NUMBER)
 
-		if (args != null) {
-			if (args.containsKey(APPLICATION_NUMBER))
-				mApplication = args.getInt(APPLICATION_NUMBER);
-			if (args.containsKey(VIEW_TYPE))
-				mViewType = args.getInt(VIEW_TYPE);
-		}
+            if (args.containsKey(VIEW_TYPE))
+                viewType = args.getInt(VIEW_TYPE)
+        }
 
-		setContentView(mViewType == VIEW_LIST ?
-				R.layout.listview :
-				R.layout.gridview);
-
-		mListView = (AbsListView) findViewById(R.id.list);
-		mApplicationLoader.execute();
-
-		View v;
-		if ((args != null) && (args.containsKey(SHOW_DELETE))) {
-			if (!args.getBoolean(SHOW_DELETE)) {
-				if ((v = findViewById(R.id.bottom_panel)) != null)
-					v.setVisibility(View.GONE);
-			}
-		}
-		if ((v = findViewById(R.id.delete)) != null)
-			v.setOnClickListener(this);
-		if ((v = findViewById(R.id.cancel)) != null)
-			v.setOnClickListener(this);
-	}
-
-	private AbsListView getListView() {
-		return mListView;
-	}
-
-	@Override
-	public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-		AppInfo appInfo = (AppInfo) view.getTag();
-		Intent data = new Intent();
-
-		data.putExtra(PACKAGE_NAME, appInfo.getPackageName());
-		data.putExtra(APPLICATION_NUMBER, mApplication);
-
-		if (getParent() == null) {
-			setResult(Activity.RESULT_OK, data);
-		} else {
-			getParent().setResult(Activity.RESULT_OK, data);
-		}
-		finish();
-	}
-
-	@Override
-	public void onClick(View v) {
-        int id = v.getId();
-        if (id == R.id.delete) {
-            Intent data = new Intent();
-
-            data.putExtra(DELETE, true);
-            data.putExtra(APPLICATION_NUMBER, mApplication);
-
-            if (getParent() == null)
-                setResult(Activity.RESULT_OK, data);
+        // Set the content view based on view type
+        setContentView(
+            if (viewType == VIEW_LIST)
+                R.layout.listview
             else
-                getParent().setResult(Activity.RESULT_OK, data);
-            finish();
-        } else if (id == R.id.cancel) {
-				if (getParent() == null)
-					setResult(Activity.RESULT_CANCELED);
-				else
-					getParent().setResult(Activity.RESULT_CANCELED);
-				finish();
-		}
-	}
+                R.layout.gridview
+        )
+
+        // Initialize the listView
+        listView = findViewById(R.id.list)
+
+        // Launch the coroutine to load the applications
+        loadApplications()
+
+        // Handle visibility of bottom panel if needed
+        intent.extras?.let { args ->
+            if (args.containsKey(SHOW_DELETE) && !args.getBoolean(SHOW_DELETE)) {
+                findViewById<View?>(R.id.bottom_panel)?.visibility = View.GONE
+            }
+        }
+
+        // Set click listeners
+        findViewById<View?>(R.id.delete)?.setOnClickListener(this)
+        findViewById<View?>(R.id.cancel)?.setOnClickListener(this)
+    }
+
+    // Coroutine to load applications
+    private fun loadApplications() {
+        coroutineScope.launch {
+            // Run the background work on the IO thread
+            val apps = withContext(Dispatchers.IO) {
+                Utils.loadApplications(this@ApplicationList).toTypedArray()
+            }
+
+            // Once the background task is complete, update the UI on the main thread
+            listView.onItemClickListener = this@ApplicationList
+            listView.adapter = ApplicationAdapter(
+                this@ApplicationList,
+                if (viewType == VIEW_LIST) R.layout.list_item else R.layout.grid_item,
+                apps
+            )
+        }
+    }
+
+    // Handle item click events
+    override fun onItemClick(
+        parent: AdapterView<*>,
+        view: View,
+        position: Int,
+        id: Long
+    ) {
+        val appInfo = view.tag as AppInfo
+
+        val data = Intent().apply {
+            putExtra(PACKAGE_NAME, appInfo.getPackageName())
+            putExtra(APPLICATION_NUMBER, applicationIndex)
+        }
+
+        setResult(RESULT_OK, data)
+        finish()
+    }
+
+    // Handle button click events
+    override fun onClick(v: View) {
+        when (v.id) {
+            R.id.delete -> {
+                val data = Intent().apply {
+                    putExtra(DELETE, true)
+                    putExtra(APPLICATION_NUMBER, applicationIndex)
+                }
+
+                // Set the result for the current activity
+                setResult(RESULT_OK, data)
+
+                finish()
+            }
+
+            R.id.cancel -> {
+                // Set the result for the current activity
+                setResult(RESULT_CANCELED)
+                finish()
+            }
+        }
+    }
+
+    // Clean up the coroutine when the activity is destroyed
+    override fun onDestroy() {
+        super.onDestroy()
+        coroutineScope.cancel() // Cancel any ongoing coroutines
+    }
 }

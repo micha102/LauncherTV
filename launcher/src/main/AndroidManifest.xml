@@ -51,7 +51,8 @@
 			</intent-filter>
 		</activity>
 		<activity android:name="org.cosh.launchertv.activities.ApplicationList"/>
-		<activity android:name="org.cosh.launchertv.activities.Preferences"/>
+		<activity android:name="org.cosh.launchertv.activities.PreferencesActivity"
+			android:theme="@style/PreferenceTheme"/>
 	</application>
 
 </manifest>
