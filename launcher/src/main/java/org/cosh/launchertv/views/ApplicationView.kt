@@ -126,7 +126,7 @@ class ApplicationView(context: Context, attrs: AttributeSet? = null, defStyle: I
         isFocusable = true
 
         if (!setup.isDefaultTransparency()) {
-            setBackgroundStateDrawable(setup.getTransparency())
+            setBackgroundStateDrawable(setup.getTransparency()/100f)
         } else {
             setBackgroundResource(R.drawable.application_selector)
         }

@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.preference.PreferenceManager
 import org.cosh.launchertv.fragments.PreferencesFragment
+import kotlin.text.toInt
 
 class Setup(private val context: Context) {
 
@@ -20,6 +21,9 @@ class Setup(private val context: Context) {
         }
     }
 
+    private fun getString(name: String, defaultValue: String): String {
+            return preferences.getString(name, defaultValue).toString() // Use getString for string preferences
+    }
     fun isDefaultTransparency(): Boolean {
         return try {
             preferences.getBoolean(PreferencesFragment.PREFERENCE_DEFAULT_TRANSPARENCY, true)
@@ -29,18 +33,9 @@ class Setup(private val context: Context) {
         }
     }
 
-    // Update the transparency getter to handle the integer value
-    fun getTransparency(): Float {
-        return try {
-            // Get the transparency as an integer (from 0 to 100)
-            val transparencyInt = preferences.getInt(PreferencesFragment.PREFERENCE_TRANSPARENCY, 50)
-            transparencyInt.toFloat() / 100f // Convert the integer value to float (0.0 to 1.0)
-        } catch (e: Exception) {
-            e.printStackTrace()
-            0.5f // Default value
-        }
+    fun getTransparency(): Int {
+        return preferences.getInt(PreferencesFragment.PREFERENCE_TRANSPARENCY, 50)
     }
-
     fun keepScreenOn(): Boolean {
         return try {
             preferences.getBoolean(PreferencesFragment.PREFERENCE_SCREEN_ON, false)
@@ -86,8 +81,8 @@ class Setup(private val context: Context) {
         }
     }
 
-    fun getGridX(): Int = getInt(PreferencesFragment.PREFERENCE_GRID_X, 3)
-    fun getGridY(): Int = getInt(PreferencesFragment.PREFERENCE_GRID_Y, 2)
-    fun getMarginX(): Int = getInt(PreferencesFragment.PREFERENCE_MARGIN_X, 5)
-    fun getMarginY(): Int = getInt(PreferencesFragment.PREFERENCE_MARGIN_Y, 5)
+    fun getGridX(): Int = getString(PreferencesFragment.PREFERENCE_GRID_X, "3").toInt()
+    fun getGridY(): Int = getString(PreferencesFragment.PREFERENCE_GRID_Y, "2").toInt()
+    fun getMarginX(): Int = getString(PreferencesFragment.PREFERENCE_MARGIN_X, "5").toInt()
+    fun getMarginY(): Int = getString(PreferencesFragment.PREFERENCE_MARGIN_Y, "5").toInt()
 }

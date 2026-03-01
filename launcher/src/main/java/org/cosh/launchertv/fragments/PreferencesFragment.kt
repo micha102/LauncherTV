@@ -117,26 +117,24 @@ class PreferencesFragment : PreferenceFragmentCompat() {
         val setup = Setup(requireContext())
 
         // Set the initial value for transparency
-        val transparency = setup.getTransparency() * 100 // Convert to integer (0 to 100)
-        transparencyPreference.value = transparency.toInt()
+        val transparency = setup.getTransparency()// Convert to integer (0 to 100)
+        transparencyPreference.value = transparency
 
         // Update the summary with the current transparency value
-        updateSeekBarSummary(transparencyPreference)
+        updateSeekBarSummary(transparencyPreference, transparency)
 
         transparencyPreference.setOnPreferenceChangeListener { _, newValue ->
             // Update the summary with the new value
-            updateSeekBarSummary(transparencyPreference)
+            updateSeekBarSummary(transparencyPreference, newValue as Int)
             true
         }
     }
 
-    private fun updateSeekBarSummary(transparencyPreference: SeekBarPreference) {
-        val progress = transparencyPreference.value
-        val transparencyValue = progress / 100f // Convert back to float (0.0 to 1.0)
+    private fun updateSeekBarSummary(transparencyPreference: SeekBarPreference, newValue: Int) {
         transparencyPreference.summary = String.format(
             Locale.getDefault(),
             getString(R.string.summary_transparency),
-            (transparencyValue * 100).toInt() // Display percentage
+            newValue  // Display percentage
         )
     }
     private fun updateSummary(
